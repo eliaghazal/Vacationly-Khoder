@@ -6,16 +6,16 @@ import java.util.List;
 
 public abstract class Place_Base implements Serializable {
     private String id;
-    private String ownerId; // Link to BusinessOwner
+    private String ownerId;
     private String name;
     private String description;
     private String location;
     private double basePrice;
     private boolean isTrending;
-    private boolean isApproved; // Admin approval
+    private boolean isApproved;
     private String specialOffer; 
     private List<Review> reviews;
-    private int capacity; // General capacity for simplicity
+    private List<String> units; // e.g., "Room 101", "Table 4"
 
     public Place_Base(String id, String ownerId, String name, String description, String location, double basePrice, int capacity) {
         this.id = id;
@@ -24,11 +24,21 @@ public abstract class Place_Base implements Serializable {
         this.description = description;
         this.location = location;
         this.basePrice = basePrice;
-        this.capacity = capacity;
         this.reviews = new ArrayList<>();
+        this.units = new ArrayList<>();
         this.isTrending = false;
-        this.isApproved = false; // Default to not approved
+        this.isApproved = false;
         this.specialOffer = "None";
+        
+        // Auto-generate units for simulation purposes
+        generateUnits(capacity);
+    }
+
+    private void generateUnits(int cap) {
+        String prefix = getCategory().equals("Restaurant") ? "Table " : "Room ";
+        for(int i=1; i<=cap; i++) {
+            units.add(prefix + i);
+        }
     }
 
     // Getters and Setters
@@ -42,7 +52,7 @@ public abstract class Place_Base implements Serializable {
     public boolean isApproved() { return isApproved; }
     public String getSpecialOffer() { return specialOffer; }
     public List<Review> getReviews() { return reviews; }
-    public int getCapacity() { return capacity; }
+    public List<String> getUnits() { return units; }
 
     public void setApproved(boolean approved) { this.isApproved = approved; }
     public void setTrending(boolean trending) { isTrending = trending; }
@@ -52,5 +62,5 @@ public abstract class Place_Base implements Serializable {
     public abstract String getCategory();
     
     @Override
-    public String toString() { return name + " - " + getCategory(); }
+    public String toString() { return name; }
 }
