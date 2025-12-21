@@ -9,39 +9,45 @@ public class Register_View extends JFrame {
     private JTextField nameField, userField, extraField; 
     private JPasswordField passField;
     private JComboBox<String> roleBox;
+    private JPanel extraPanel; // To hold the dynamic titled field
 
     public Register_View(App_Controller controller) {
         this.controller = controller;
         setTitle("Vacationly - Register");
-        setSize(400, 500);
+        setSize(420, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         StyleUtils.styleFrame(this);
         
-        JPanel panel = new JPanel(new GridLayout(7, 1, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(7, 1, 15, 15));
         panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
         
-        nameField = new JTextField(); nameField.setBorder(BorderFactory.createTitledBorder("Full Name"));
-        userField = new JTextField(); userField.setBorder(BorderFactory.createTitledBorder("Username"));
-        passField = new JPasswordField(); passField.setBorder(BorderFactory.createTitledBorder("Password"));
+        nameField = new JTextField();
+        userField = new JTextField();
+        passField = new JPasswordField();
+        extraField = new JTextField();
         
         roleBox = new JComboBox<>(new String[]{"Client", "Business Owner"});
-        roleBox.setBorder(BorderFactory.createTitledBorder("Account Type"));
         
-        extraField = new JTextField(); 
-        extraField.setBorder(BorderFactory.createTitledBorder("Initial Deposit ($)")); // Default for Client
+        // Dynamic Panel for Extra Field (Balance vs Contact)
+        extraPanel = new JPanel(new BorderLayout());
+        extraPanel.setOpaque(false);
+        updateExtraField("Client"); // Default
         
-        roleBox.addActionListener(e -> {
-            if(roleBox.getSelectedItem().equals("Client")) {
-                extraField.setBorder(BorderFactory.createTitledBorder("Initial Deposit ($)"));
-            } else {
-                extraField.setBorder(BorderFactory.createTitledBorder("Contact Info"));
-            }
-        });
+        roleBox.addActionListener(e -> updateExtraField((String)roleBox.getSelectedItem()));
+
+        // Wrap inputs
+        JPanel nameP = StyleUtils.createTitledField("Full Name", nameField);
+        JPanel userP = StyleUtils.createTitledField("Username", userField);
+        JPanel passP = StyleUtils.createTitledField("Password", passField);
+        JPanel roleP = StyleUtils.createTitledField("Account Type", roleBox);
 
         JButton regBtn = StyleUtils.createStyledButton("Sign Up");
         JButton backBtn = new JButton("Back to Login");
+        backBtn.setContentAreaFilled(false);
+        backBtn.setBorderPainted(false);
+        backBtn.setForeground(StyleUtils.PRIMARY);
         
         regBtn.addActionListener(e -> handleRegister());
         backBtn.addActionListener(e -> {
@@ -49,16 +55,27 @@ public class Register_View extends JFrame {
             this.dispose();
         });
 
-        panel.add(new JLabel("Create Account", SwingConstants.CENTER));
-        panel.add(nameField);
-        panel.add(userField);
-        panel.add(passField);
-        panel.add(roleBox);
-        panel.add(extraField);
+        JLabel head = new JLabel("Create Account", SwingConstants.CENTER);
+        head.setFont(StyleUtils.HEADER_FONT);
+
+        panel.add(head);
+        panel.add(nameP);
+        panel.add(userP);
+        panel.add(passP);
+        panel.add(roleP);
+        panel.add(extraPanel); // Dynamic
         panel.add(regBtn);
         
         add(panel, BorderLayout.CENTER);
         add(backBtn, BorderLayout.SOUTH);
+    }
+    
+    private void updateExtraField(String role) {
+        extraPanel.removeAll();
+        String title = role.equals("Client") ? "Initial Deposit ($)" : "Contact Info";
+        extraPanel.add(StyleUtils.createTitledField(title, extraField));
+        extraPanel.revalidate();
+        extraPanel.repaint();
     }
 
     private void handleRegister() {
