@@ -55,29 +55,42 @@ public class App_Controller {
                 .collect(Collectors.toList());
     }
 
-    public List<Place_Base> getAllPlacesForAdmin() {
-        return Data_Store.getInstance().getPlaces();
-    }
-
     public void addPlace(Place_Base p) {
         Data_Store.getInstance().getPlaces().add(p);
         Data_Store.getInstance().saveData();
     }
     
-    public void approvePlace(Place_Base p) {
-        p.setApproved(true);
+    // --- Admin Services (Restored for Admin Dashboard) ---
+    public List<Place_Base> getAllPlaces() {
+        return Data_Store.getInstance().getPlaces();
+    }
+
+    public List<Reservation> getAllReservations() {
+        return Data_Store.getInstance().getReservations();
+    }
+    
+    public List<Message> getMessages() {
+        return Data_Store.getInstance().getMessages();
+    }
+
+    public void updateReservationStatus(Reservation r, boolean confirmed) {
+        r.setStatus(confirmed ? Reservation.ReservationStatus.CONFIRMED : Reservation.ReservationStatus.CANCELED);
+        Data_Store.getInstance().saveData();
+    }
+    
+    public void respondToMessage(Message m, String response) {
+        m.respond(response);
         Data_Store.getInstance().saveData();
     }
 
-    // --- Booking Service (Availability & Payment) ---
+    // --- Booking Service ---
     public boolean checkAvailability(Place_Base place, LocalDate start, LocalDate end) {
-        // Simple overlap check: (StartA <= EndB) and (EndA >= StartB)
         for (Reservation r : Data_Store.getInstance().getReservations()) {
             if (r.getPlace().getId().equals(place.getId()) && 
                (r.getStatus() == Reservation.ReservationStatus.CONFIRMED)) {
                 
                 if (!start.isAfter(r.getEndDate()) && !end.isBefore(r.getStartDate())) {
-                    return false; // Overlap found
+                    return false; 
                 }
             }
         }
@@ -89,44 +102,33 @@ public class App_Controller {
         Client client = (Client) currentUser;
 
         long days = ChronoUnit.DAYS.between(start, end);
-        if(days < 1) days = 1; // Minimum 1 day/slot
+        if(days < 1) days = 1; 
         double total = place.getBasePrice() * days;
 
-        // Balance Check
         if (client.getBalance() < total) {
-            throw new Exception("Insufficient Balance. Wallet: $" + client.getBalance() + ", Cost: $" + total);
+            throw new Exception("Insufficient Balance.");
         }
         
-        // Availability Check
         if (!checkAvailability(place, start, end)) {
-            throw new Exception("Place is fully booked for these dates.");
+            throw new Exception("Place is fully booked.");
         }
 
-        // Process Payment
         client.deductBalance(total);
         
-        // Save Reservation
         String rid = "R" + System.currentTimeMillis();
         Reservation res = new Reservation(rid, client.getId(), place, start, end, total);
         res.setStatus(Reservation.ReservationStatus.CONFIRMED);
         
         Data_Store.getInstance().getReservations().add(res);
-        Data_Store.getInstance().saveData(); // Persist changes to Client balance and Reservation list
+        Data_Store.getInstance().saveData();
     }
 
     public void cancelReservation(Reservation r) {
         if (r.getStatus() == Reservation.ReservationStatus.CONFIRMED) {
-            // Refund logic could go here (e.g., 100% refund)
+           // Refund logic simplified
             if (currentUser instanceof Client) {
                 Client c = (Client) currentUser;
                 c.setBalance(c.getBalance() + r.getTotalCost());
-            } else {
-                // If admin cancels, find client and refund
-                for(User_Base u : Data_Store.getInstance().getUsers()) {
-                    if(u.getId().equals(r.getClientId()) && u instanceof Client) {
-                        ((Client)u).setBalance(((Client)u).getBalance() + r.getTotalCost());
-                    }
-                }
             }
             r.setStatus(Reservation.ReservationStatus.CANCELED);
             Data_Store.getInstance().saveData();
@@ -135,10 +137,6 @@ public class App_Controller {
 
     public List<Reservation> getMyReservations() {
         if (currentUser == null) return new ArrayList<>();
-        // If Client -> filter by clientId
-        // If Owner -> filter by places owned by owner
-        // If Admin -> return all
-        
         if (currentUser instanceof Client) {
             return Data_Store.getInstance().getReservations().stream()
                     .filter(r -> r.getClientId().equals(currentUser.getId()))
@@ -147,8 +145,14 @@ public class App_Controller {
             return Data_Store.getInstance().getReservations().stream()
                     .filter(r -> r.getPlace().getOwnerId().equals(currentUser.getId()))
                     .collect(Collectors.toList());
-        } else {
-            return Data_Store.getInstance().getReservations();
         }
+        return new ArrayList<>();
+    }
+    
+    public void sendSupportMessage(String content) {
+        if (currentUser == null) return;
+        Message msg = new Message(currentUser.getId(), currentUser.getFullName(), content);
+        Data_Store.getInstance().getMessages().add(msg);
+        Data_Store.getInstance().saveData();
     }
 }
