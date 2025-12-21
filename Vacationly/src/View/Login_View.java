@@ -1,7 +1,7 @@
 package View;
 
 import Controller.App_Controller;
-import Model.User_Base;
+import Model.*;
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,40 +9,50 @@ public class Login_View extends JFrame {
     private App_Controller controller;
     private JTextField userField;
     private JPasswordField passField;
-    private JComboBox<String> roleBox;
 
     public Login_View(App_Controller controller) {
         this.controller = controller;
-        setTitle("Vacationly - Login");
-        setSize(400, 300);
+        setTitle("Vacationly - Welcome");
+        setSize(400, 350);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        StyleUtils.styleFrame(this);
         initComponents();
     }
 
     private void initComponents() {
-        JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel panel = new JPanel(new GridLayout(6, 1, 10, 10));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-        panel.add(new JLabel("Username:"));
+        JLabel title = new JLabel("VACATIONLY", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 24));
+        title.setForeground(StyleUtils.PRIMARY);
+
         userField = new JTextField();
-        panel.add(userField);
-
-        panel.add(new JLabel("Password:"));
+        userField.setBorder(BorderFactory.createTitledBorder("Username"));
+        
         passField = new JPasswordField();
-        panel.add(passField);
+        passField.setBorder(BorderFactory.createTitledBorder("Password"));
 
-        panel.add(new JLabel("Role:"));
-        roleBox = new JComboBox<>(new String[]{"Client", "Admin"});
-        panel.add(roleBox);
-
-        JButton loginBtn = new JButton("Login");
-        JButton regBtn = new JButton("Register (Client)");
+        JButton loginBtn = StyleUtils.createStyledButton("Login");
+        JButton regBtn = new JButton("Create New Account");
+        regBtn.setBorderPainted(false);
+        regBtn.setContentAreaFilled(false);
+        regBtn.setForeground(Color.BLUE);
+        regBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         loginBtn.addActionListener(e -> handleLogin());
-        regBtn.addActionListener(e -> handleRegister());
+        regBtn.addActionListener(e -> {
+            new Register_View(controller).setVisible(true);
+            this.dispose();
+        });
 
+        panel.add(title);
+        panel.add(userField);
+        panel.add(passField);
         panel.add(loginBtn);
+        panel.add(new JSeparator());
         panel.add(regBtn);
 
         add(panel);
@@ -51,30 +61,15 @@ public class Login_View extends JFrame {
     private void handleLogin() {
         String u = userField.getText();
         String p = new String(passField.getPassword());
-        boolean isAdmin = roleBox.getSelectedItem().equals("Admin");
-
-        User_Base user = controller.login(u, p, isAdmin);
+        User_Base user = controller.login(u, p);
+        
         if (user != null) {
-            JOptionPane.showMessageDialog(this, "Welcome " + user.getFullName());
             this.dispose();
-            if (isAdmin) {
-                new Admin_Dashboard(controller).setVisible(true);
-            } else {
-                new Client_Dashboard(controller).setVisible(true);
-            }
+            if (user instanceof Admin) new Admin_Dashboard(controller).setVisible(true);
+            else if (user instanceof Client) new Client_Dashboard(controller).setVisible(true);
+            else if (user instanceof BusinessOwner) new Owner_Dashboard(controller).setVisible(true);
         } else {
-            JOptionPane.showMessageDialog(this, "Invalid credentials", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Invalid credentials", "Login Failed", JOptionPane.ERROR_MESSAGE);
         }
-    }
-
-    private void handleRegister() {
-        String u = userField.getText();
-        String p = new String(passField.getPassword());
-        if(u.isEmpty() || p.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Enter username and password");
-            return;
-        }
-        controller.registerClient(u, p, u); // simple registration
-        JOptionPane.showMessageDialog(this, "Registered! Please login.");
     }
 }
