@@ -37,6 +37,15 @@ public class Data_Store implements Serializable {
     public List<Reservation> getReservations() { return reservations; }
     public List<Message> getMessages() { return messages; }
 
+    // --- THIS WAS MISSING ---
+    public User_Base getUserById(String id) {
+        return users.stream()
+                .filter(u -> u.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+    // ------------------------
+
     public void saveData() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
             oos.writeObject(users);
