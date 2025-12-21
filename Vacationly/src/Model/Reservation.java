@@ -7,6 +7,7 @@ public class Reservation implements Serializable {
     private String id;
     private String clientId;
     private Place_Base place;
+    private String unitName; // e.g., "Room 101"
     private LocalDate startDate;
     private LocalDate endDate;
     private double totalCost;
@@ -16,20 +17,21 @@ public class Reservation implements Serializable {
         PENDING, CONFIRMED, CANCELED, COMPLETED
     }
 
-    public Reservation(String id, String clientId, Place_Base place, LocalDate startDate, LocalDate endDate, double totalCost) {
+    public Reservation(String id, String clientId, Place_Base place, String unitName, LocalDate startDate, LocalDate endDate, double totalCost) {
         this.id = id;
         this.clientId = clientId;
         this.place = place;
+        this.unitName = unitName;
         this.startDate = startDate;
         this.endDate = endDate;
         this.totalCost = totalCost;
         this.status = ReservationStatus.PENDING;
     }
 
-    // Getters and Setters
     public String getId() { return id; }
     public String getClientId() { return clientId; }
     public Place_Base getPlace() { return place; }
+    public String getUnitName() { return unitName; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public double getTotalCost() { return totalCost; }
@@ -39,6 +41,6 @@ public class Reservation implements Serializable {
 
     @Override
     public String toString() {
-        return "Res#" + id + " [" + status + "] " + place.getName();
+        return place.getName() + " (" + unitName + ")";
     }
 }
