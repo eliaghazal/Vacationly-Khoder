@@ -12,7 +12,7 @@ public class Owner_Dashboard extends JFrame {
     public Owner_Dashboard(App_Controller controller) {
         this.controller = controller;
         setTitle("Vacationly - Business Manager");
-        setSize(1000, 600);
+        setSize(1100, 600); // Widened slightly to fit the new column
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         StyleUtils.styleFrame(this);
@@ -38,17 +38,28 @@ public class Owner_Dashboard extends JFrame {
     
     private JPanel createBusinessPanel() {
         JPanel p = new JPanel(new BorderLayout());
-        JPanel form = new JPanel(new FlowLayout());
+        
+        // --- Updated Form Panel ---
+        JPanel form = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        
         JTextField name = new JTextField(10); name.setBorder(BorderFactory.createTitledBorder("Name"));
         JTextField loc = new JTextField(10); loc.setBorder(BorderFactory.createTitledBorder("Location"));
-        JTextField price = new JTextField(5); price.setBorder(BorderFactory.createTitledBorder("Price"));
-        JTextField cap = new JTextField(5); cap.setBorder(BorderFactory.createTitledBorder("Capacity"));
+        JTextField price = new JTextField(6); price.setBorder(BorderFactory.createTitledBorder("Price ($)"));
+        JTextField cap = new JTextField(5); cap.setBorder(BorderFactory.createTitledBorder("Cap."));
+        
+        // NEW: Offer Field
+        JTextField offer = new JTextField(10); offer.setBorder(BorderFactory.createTitledBorder("Special Offer"));
+        
         JComboBox<String> type = new JComboBox<>(new String[]{"Hotel", "Restaurant", "Resort"});
-        JButton addBtn = StyleUtils.createStyledButton("Add");
+        JButton addBtn = StyleUtils.createStyledButton("Add Business");
         
-        form.add(name); form.add(loc); form.add(price); form.add(cap); form.add(type); form.add(addBtn);
+        form.add(name); form.add(loc); form.add(price); form.add(cap); 
+        form.add(offer); // Added to layout
+        form.add(type); form.add(addBtn);
         
-        DefaultTableModel model = new DefaultTableModel(new String[]{"Name", "Status", "Price", "Units"}, 0);
+        // --- Updated Table Model ---
+        // Added "Offer" column
+        DefaultTableModel model = new DefaultTableModel(new String[]{"Name", "Status", "Price", "Units", "Offer"}, 0);
         JTable table = new JTable(model);
         StyleUtils.styleTable(table);
         
@@ -59,17 +70,53 @@ public class Owner_Dashboard extends JFrame {
                 int c = Integer.parseInt(cap.getText());
                 Place_Base place = null;
                 String oid = controller.getCurrentUser().getId();
-                if(type.getSelectedItem().equals("Hotel")) place = new Hotel(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
-                else if(type.getSelectedItem().equals("Restaurant")) place = new Restaurant(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
-                else place = new Resort(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
+                
+                // Create specific object
+                if(type.getSelectedItem().equals("Hotel")) 
+                    place = new Hotel(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
+                else if(type.getSelectedItem().equals("Restaurant")) 
+                    place = new Restaurant(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
+                else 
+                    place = new Resort(pid, oid, name.getText(), "Desc", loc.getText(), pr, c);
+                
+                // Set the Offer if provided
+                String offerText = offer.getText().trim();
+                if(!offerText.isEmpty()) {
+                    place.setSpecialOffer(offerText);
+                } else {
+                    place.setSpecialOffer("None");
+                }
                 
                 controller.addPlace(place);
-                model.addRow(new Object[]{place.getName(), "Pending", "$" + place.getBasePrice(), c});
-            } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Invalid Input"); }
+                
+                // Add to table
+                model.addRow(new Object[]{
+                    place.getName(), 
+                    "Pending", 
+                    "$" + place.getBasePrice(), 
+                    c, 
+                    place.getSpecialOffer() // Show in table
+                });
+                
+                // Clear inputs
+                name.setText(""); loc.setText(""); price.setText(""); cap.setText(""); offer.setText("");
+                
+                JOptionPane.showMessageDialog(this, "Business Added!");
+                
+            } catch (Exception ex) { 
+                JOptionPane.showMessageDialog(this, "Invalid Input. Check numbers."); 
+            }
         });
         
+        // Load existing data
         for(Place_Base pl : controller.getOwnerPlaces(controller.getCurrentUser().getId())) {
-             model.addRow(new Object[]{pl.getName(), pl.isApproved() ? "Approved" : "Pending", "$" + pl.getBasePrice(), pl.getUnits().size()});
+             model.addRow(new Object[]{
+                 pl.getName(), 
+                 pl.isApproved() ? "Approved" : "Pending", 
+                 "$" + pl.getBasePrice(), 
+                 pl.getUnits().size(),
+                 pl.getSpecialOffer() // Load existing offer
+             });
         }
         
         p.add(form, BorderLayout.NORTH);
