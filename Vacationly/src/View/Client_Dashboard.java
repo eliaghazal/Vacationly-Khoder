@@ -6,207 +6,147 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Client_Dashboard extends JFrame {
     private App_Controller controller;
-    private JTable placesTable;
-    private DefaultTableModel placesModel;
-    private JTable resTable;
-    private DefaultTableModel resModel;
-    
-    // Filter controls
+    private JTable table;
+    private DefaultTableModel model;
     private JTextField searchField;
-    private JCheckBox trendingCheck, offerCheck;
-    private JTextField maxPriceField;
-    
-    // List to hold filtered places for index matching
-    private List<Place_Base> displayedPlaces;
+    private JCheckBox sortPrice;
 
     public Client_Dashboard(App_Controller controller) {
         this.controller = controller;
-        setTitle("Vacationly - Discover Lebanon");
-        setSize(900, 600);
+        setTitle("Vacationly - Client Portal");
+        setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        
+        StyleUtils.styleFrame(this);
+
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Browse Places", createBrowsePanel());
-        tabs.addTab("My Reservations", createReservationsPanel());
-        tabs.addTab("Support", createSupportPanel());
+        tabs.addTab("Browse Businesses", createBrowsePanel());
+        tabs.addTab("My Bookings", createBookingsPanel());
         
-        // Add Logout
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton logoutBtn = new JButton("Logout");
-        logoutBtn.addActionListener(e -> {
-            controller.logout();
-            this.dispose();
-            new Login_View(controller).setVisible(true);
+        Client client = (Client) controller.getCurrentUser();
+        JLabel header = new JLabel("  Wallet: $" + client.getBalance() + " | User: " + client.getFullName());
+        header.setFont(StyleUtils.HEADER_FONT);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        
+        JButton logout = new JButton("Logout");
+        logout.addActionListener(e -> {
+             new Login_View(controller).setVisible(true);
+             dispose();
         });
-        
-        JPanel header = new JPanel(new BorderLayout());
-        header.add(new JLabel("Welcome, " + controller.getCurrentUser().getFullName()), BorderLayout.WEST);
-        header.add(topPanel, BorderLayout.EAST);
-        
-        add(header, BorderLayout.NORTH);
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(header, BorderLayout.CENTER);
+        top.add(logout, BorderLayout.EAST);
+
+        add(top, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
     }
-    
+
     private JPanel createBrowsePanel() {
-        JPanel p = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
         
         // Filter Bar
-        JPanel filterPanel = new JPanel(new FlowLayout());
-        searchField = new JTextField(10);
-        trendingCheck = new JCheckBox("Trending Only");
-        offerCheck = new JCheckBox("With Offers");
-        maxPriceField = new JTextField("1000", 5);
-        JButton filterBtn = new JButton("Apply Filters");
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchField = new JTextField(15);
+        sortPrice = new JCheckBox("Sort Cheapest First");
+        JButton searchBtn = StyleUtils.createStyledButton("Search");
+        searchBtn.addActionListener(e -> loadPlaces());
         
-        filterPanel.add(new JLabel("Search:"));
-        filterPanel.add(searchField);
-        filterPanel.add(trendingCheck);
-        filterPanel.add(offerCheck);
-        filterPanel.add(new JLabel("Max Price:"));
-        filterPanel.add(maxPriceField);
-        filterPanel.add(filterBtn);
+        filters.add(new JLabel("Search:"));
+        filters.add(searchField);
+        filters.add(sortPrice);
+        filters.add(searchBtn);
         
         // Table
-        String[] cols = {"Name", "Category", "Location", "Price", "Special"};
-        placesModel = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        placesTable = new JTable(placesModel);
+        String[] cols = {"Name", "Category", "Location", "Price/Night", "Offer"};
+        model = new DefaultTableModel(cols, 0);
+        table = new JTable(model);
+        StyleUtils.styleTable(table);
         
-        // Action Panel
-        JPanel actionPanel = new JPanel();
-        JButton bookBtn = new JButton("Make Reservation");
+        // Booking Area
+        JPanel bookPanel = new JPanel();
+        JTextField startF = new JTextField("YYYY-MM-DD", 8);
+        JTextField endF = new JTextField("YYYY-MM-DD", 8);
+        JButton bookBtn = StyleUtils.createStyledButton("Book Selected");
         
         bookBtn.addActionListener(e -> {
-            int row = placesTable.getSelectedRow();
-            if(row != -1) {
-                // Ensure we pick from the filtered list (displayedPlaces) not the full list
-                if (row < displayedPlaces.size()) {
-                    Place_Base place = displayedPlaces.get(row);
-                    int choice = JOptionPane.showConfirmDialog(this, 
-                            "Book " + place.getName() + " for $" + place.getBasePrice() + "?");
-                    
-                    if(choice == JOptionPane.YES_OPTION) {
-                        controller.makeReservation(place, LocalDate.now()); // Using today's date for simplicity
-                        JOptionPane.showMessageDialog(this, "Reservation Confirmed!");
-                        loadReservations(); // Refresh reservation tab
-                    }
-                }
-            } else {
-                JOptionPane.showMessageDialog(this, "Please select a place first.");
+            int row = table.getSelectedRow();
+            if(row == -1) {
+                JOptionPane.showMessageDialog(this, "Select a place first!");
+                return;
+            }
+            try {
+                LocalDate s = LocalDate.parse(startF.getText());
+                LocalDate en = LocalDate.parse(endF.getText());
+                // Get the place object (In real app, maintain a list mapping rows to IDs)
+                String name = (String) model.getValueAt(row, 0);
+                Place_Base place = controller.getApprovedPlaces().stream()
+                        .filter(p -> p.getName().equals(name)).findFirst().orElse(null);
+                
+                controller.createReservation(place, s, en);
+                JOptionPane.showMessageDialog(this, "Booking Confirmed!");
+                // Refresh to update balance display
+                dispose();
+                new Client_Dashboard(controller).setVisible(true);
+                
+            } catch (DateTimeParseException dt) {
+                JOptionPane.showMessageDialog(this, "Invalid Date Format (YYYY-MM-DD)");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Booking Failed: " + ex.getMessage());
             }
         });
         
-        actionPanel.add(bookBtn);
+        bookPanel.add(new JLabel("Check-in:")); bookPanel.add(startF);
+        bookPanel.add(new JLabel("Check-out:")); bookPanel.add(endF);
+        bookPanel.add(bookBtn);
+
+        panel.add(filters, BorderLayout.NORTH);
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(bookPanel, BorderLayout.SOUTH);
         
-        p.add(filterPanel, BorderLayout.NORTH);
-        p.add(new JScrollPane(placesTable), BorderLayout.CENTER);
-        p.add(actionPanel, BorderLayout.SOUTH);
-        
-        filterBtn.addActionListener(e -> loadPlaces());
-        
-        loadPlaces(); // Initial Load
-        return p;
+        loadPlaces();
+        return panel;
     }
-    
+
     private void loadPlaces() {
-        // Get all places
-        List<Place_Base> all = controller.getAllPlaces();
+        model.setRowCount(0);
+        List<Place_Base> list = controller.getApprovedPlaces();
         
-        // Apply Filters
-        String search = searchField.getText().toLowerCase();
-        double maxPrice = Double.MAX_VALUE;
-        try {
-            maxPrice = Double.parseDouble(maxPriceField.getText());
-        } catch (NumberFormatException e) { /* ignore */ }
+        // Filter
+        String txt = searchField.getText().toLowerCase();
+        if(!txt.isEmpty()) {
+            list.removeIf(p -> !p.getName().toLowerCase().contains(txt) && !p.getLocation().toLowerCase().contains(txt));
+        }
         
-        double finalMaxPrice = maxPrice;
-        displayedPlaces = all.stream()
-            .filter(pl -> pl.getName().toLowerCase().contains(search) || pl.getLocation().toLowerCase().contains(search))
-            .filter(pl -> !trendingCheck.isSelected() || pl.isTrending())
-            .filter(pl -> !offerCheck.isSelected() || !"None".equals(pl.getSpecialOffer()))
-            .filter(pl -> pl.getBasePrice() <= finalMaxPrice)
-            .collect(Collectors.toList());
-            
-        // Update Table
-        placesModel.setRowCount(0);
-        for(Place_Base pl : displayedPlaces) {
-            placesModel.addRow(new Object[]{
-                pl.getName(),
-                pl.getCategory(),
-                pl.getLocation(),
-                "$" + pl.getBasePrice(),
-                pl.getSpecialOffer()
-            });
+        // Sort
+        if(sortPrice.isSelected()) {
+            list.sort((a,b) -> Double.compare(a.getBasePrice(), b.getBasePrice()));
+        }
+
+        for (Place_Base p : list) {
+            model.addRow(new Object[]{p.getName(), p.getCategory(), p.getLocation(), "$" + p.getBasePrice(), p.getSpecialOffer()});
         }
     }
     
-    private JPanel createReservationsPanel() {
+    private JPanel createBookingsPanel() {
         JPanel p = new JPanel(new BorderLayout());
-        String[] cols = {"ID", "Place", "Date", "Details", "Status"};
-        resModel = new DefaultTableModel(cols, 0);
-        resTable = new JTable(resModel);
+        String[] cols = {"ID", "Place", "Dates", "Status", "Cost"};
+        DefaultTableModel mod = new DefaultTableModel(cols, 0);
+        JTable tbl = new JTable(mod);
+        StyleUtils.styleTable(tbl);
         
-        JButton cancelBtn = new JButton("Cancel Reservation");
-        cancelBtn.addActionListener(e -> {
-             int row = resTable.getSelectedRow();
-             if(row != -1) {
-                 List<Reservation> clientRes = controller.getClientReservations();
-                 if (row < clientRes.size()) {
-                     Reservation r = clientRes.get(row);
-                     controller.cancelReservationClient(r);
-                     loadReservations();
-                 }
-             } else {
-                 JOptionPane.showMessageDialog(this, "Select a reservation to cancel.");
-             }
-        });
-        
-        p.add(new JScrollPane(resTable), BorderLayout.CENTER);
-        p.add(cancelBtn, BorderLayout.SOUTH);
-        
-        loadReservations();
-        return p;
-    }
-    
-    private void loadReservations() {
-        resModel.setRowCount(0);
-        for(Reservation r : controller.getClientReservations()) {
-            resModel.addRow(new Object[]{
-                r.getId(), 
-                r.getPlace().getName(), 
-                r.getDate(), 
-                r.getDetails(), 
-                r.getStatus()
-            });
+        for(Reservation r : controller.getMyReservations()) {
+            mod.addRow(new Object[]{r.getId(), r.getPlace().getName(), r.getStartDate() + " to " + r.getEndDate(), r.getStatus(), "$" + r.getTotalCost()});
         }
-    }
-    
-    private JPanel createSupportPanel() {
-        JPanel p = new JPanel(new BorderLayout());
-        JTextArea msgArea = new JTextArea();
-        JButton sendBtn = new JButton("Send to Support");
         
-        sendBtn.addActionListener(e -> {
-            if(!msgArea.getText().isEmpty()){
-                controller.sendSupportMessage(msgArea.getText());
-                msgArea.setText("");
-                JOptionPane.showMessageDialog(this, "Message Sent");
-            }
-        });
-        
-        p.add(new JLabel("Describe your issue:"), BorderLayout.NORTH);
-        p.add(new JScrollPane(msgArea), BorderLayout.CENTER);
-        p.add(sendBtn, BorderLayout.SOUTH);
+        p.add(new JScrollPane(tbl), BorderLayout.CENTER);
         return p;
     }
 }
