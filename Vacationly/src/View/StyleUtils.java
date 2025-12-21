@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 
@@ -55,10 +56,28 @@ public class StyleUtils {
         return btn;
     }
 
-    public static Border createCardBorder() {
-        return new CompoundBorder(
-            BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
-            new EmptyBorder(15, 15, 15, 15)
-        );
+    // --- NEW: Fix for Titled Input Fields ---
+    public static JPanel createTitledField(String title, JComponent field) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        
+        // Modern Titled Border
+        TitledBorder border = BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(new Color(180, 180, 180)), title);
+        border.setTitleFont(new Font("Segoe UI", Font.BOLD, 12));
+        border.setTitleColor(new Color(100, 100, 100));
+        
+        panel.setBorder(border);
+        
+        // Remove default border from field and add internal padding
+        field.setBorder(new EmptyBorder(5, 5, 5, 5));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        // If it's a text field, make it transparent to blend with panel if needed
+        if(field instanceof JTextField) {
+            ((JTextField) field).setOpaque(false);
+        }
+        
+        panel.add(field, BorderLayout.CENTER);
+        return panel;
     }
 }
