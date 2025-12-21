@@ -17,14 +17,15 @@ public class Admin_Dashboard extends JFrame {
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        StyleUtils.styleFrame(this);
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Manage Reservations", createResPanel());
         tabs.addTab("Manage Places", createPlacesPanel());
         tabs.addTab("Messages", createMsgPanel());
         
-        // Add Logout
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        topPanel.setOpaque(false);
         JButton logoutBtn = new JButton("Logout");
         logoutBtn.addActionListener(e -> {
             controller.logout();
@@ -40,9 +41,10 @@ public class Admin_Dashboard extends JFrame {
     
     private JPanel createResPanel() {
         JPanel p = new JPanel(new BorderLayout());
-        String[] cols = {"Res ID", "Client ID", "Place", "Date", "Cost", "Status"};
+        String[] cols = {"Res ID", "Client ID", "Place", "Start Date", "Cost", "Status"};
         resModel = new DefaultTableModel(cols, 0);
         resTable = new JTable(resModel);
+        StyleUtils.styleTable(resTable);
         
         JPanel btnPanel = new JPanel();
         JButton cancelBtn = new JButton("Cancel Selected");
@@ -50,7 +52,6 @@ public class Admin_Dashboard extends JFrame {
         cancelBtn.addActionListener(e -> {
             int row = resTable.getSelectedRow();
             if(row != -1) {
-                // Safe check for list bounds
                 java.util.List<Reservation> allRes = controller.getAllReservations();
                 if (row < allRes.size()) {
                     Reservation r = allRes.get(row);
@@ -78,7 +79,7 @@ public class Admin_Dashboard extends JFrame {
                 r.getId(), 
                 r.getClientId(), 
                 r.getPlace().getName(), 
-                r.getDate(), 
+                r.getStartDate(), // Fixed: getDate() -> getStartDate()
                 r.getTotalCost(), 
                 r.getStatus() 
             });
@@ -87,8 +88,9 @@ public class Admin_Dashboard extends JFrame {
 
     private JPanel createPlacesPanel() {
         JPanel p = new JPanel(new BorderLayout());
-        placesModel = new DefaultTableModel(new String[]{"ID", "Name", "Price", "Trending", "Offer"}, 0);
+        placesModel = new DefaultTableModel(new String[]{"ID", "Name", "Price", "Trending", "Approved"}, 0);
         placesTable = new JTable(placesModel);
+        StyleUtils.styleTable(placesTable);
         
         p.add(new JScrollPane(placesTable), BorderLayout.CENTER);
         loadPlaces();
@@ -103,7 +105,7 @@ public class Admin_Dashboard extends JFrame {
                 p.getName(), 
                 p.getBasePrice(), 
                 p.isTrending(), 
-                p.getSpecialOffer()
+                p.isApproved()
             });
         }
     }
@@ -112,6 +114,7 @@ public class Admin_Dashboard extends JFrame {
         JPanel p = new JPanel(new BorderLayout());
         msgModel = new DefaultTableModel(new String[]{"Sender", "Content", "Response", "Status"}, 0);
         msgTable = new JTable(msgModel);
+        StyleUtils.styleTable(msgTable);
         
         JButton replyBtn = new JButton("Reply");
         replyBtn.addActionListener(e -> {
